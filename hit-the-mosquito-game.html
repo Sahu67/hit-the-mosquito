@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hit the Mosquito - Sahil Pashte</title>
+    <link rel="shortcut icon" href="./mosquito.png" type="image/x-icon">
+
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Poppins", sans-serif;
+            user-select: none;
+        }
+
+        body {
+            width: 100vw;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-color: #5e2750;
+        }
+
+        .start-timer-container {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            display: none;
+        }
+
+        .start-timer-container.started {
+            display: block;
+        }
+
+        .start-timer-container::before {
+            content: "";
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            inset: 0;
+            background-color: #f7f7f7;
+            opacity: 0.3;
+        }
+
+        .start-timer-container h2 {
+            position: absolute;
+            font-size: 4rem;
+            left: 50%;
+            top: 50%;
+            display: none;
+            transform: translate(-50%, -50%);
+        }
+        .start-timer-container.started h2 {
+            display: block;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #f7f7f7;
+        }
+
+        h1 {
+            font-size: 2rem;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 25px 20px;
+        }
+
+        .btn {
+            border: 0;
+            outline: 0;
+            padding: 10px;
+            cursor: pointer;
+            box-shadow: 2px 3px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .start-btn {
+            background-color: #dd4814;
+            color: #f7f7f7;
+            border-radius: 4px;
+        }
+
+        .start-btn:hover {
+            background-color: #dd4a14e4;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            gap: 30px;
+        }
+
+        .game-container {
+            position: relative;
+            width: min(95%, 700px);
+            height: 500px;
+            background-color: #dd734efa;
+            border-radius: 4px;
+            box-shadow: 2px 3px 20px rgba(0, 0, 0, 0.1),
+                inset 0 0 15px rgba(255, 255, 255, 0.37);
+            transition: background-color 0.3s ease;
+        }
+
+        .game-container.started {
+            background-color: #333;
+        }
+
+        .game-container .mosquito-img {
+            position: absolute;
+            width: 60px;
+            height: 58px;
+            left: 20px;
+            top: 20px;
+            cursor: crosshair;
+            object-fit: contain;
+            z-index: 1;
+        }
+
+        .game-fields .fields {
+            display: inline;
+            padding: 0 15px;
+        }
+
+        .game-fields .fields:nth-child(1) {
+            border-right: 3px solid #f7f7f7;
+        }
+
+        .game-fields .fields:nth-child(2) {
+            border-left: 3px solid #f7f7f7;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>High Score: <span class="high-score-holder">0</span></h1>
+        <button class="btn start-btn">Start Game</button>
+    </header>
+    <main>
+        <div class="game-fields">
+            <h2 class="fields">
+                Score: &nbsp;<span class="current-score-holder">0</span>
+            </h2>
+            <h2 class="fields">Time: &nbsp;<span class="time-holder"></span>s</h2>
+        </div>
+        <div class="game-container">
+            <img class="mosquito-img" src="./mosquito.png" alt="mosquito image" draggable="false" />
+        </div>
+    </main>
+
+    <div class="start-timer-container">
+        <h2>3</h2>
+    </div>
+
+    <script>
+        const startBtn = document.querySelector(".start-btn"),
+            gameTimeHolder = document.querySelector(".time-holder"),
+            gameContainer = document.querySelector(".game-container"),
+            mosquitoImg = document.querySelector(".mosquito-img"),
+            currentScoreHolder = document.querySelector(".current-score-holder"),
+            highScoreHolder = document.querySelector(".high-score-holder"),
+            startTimerCountainer = document.querySelector(".start-timer-container"),
+            startTimerCountHolder = startTimerCountainer.querySelector("h2");
+
+        // constants
+        const GAME_TIME = 30,
+            MOSQUITO_REPOSITION_TIME = 900,
+            MOSQUITO_IMG_WIDTH = mosquitoImg.offsetWidth,
+            MOSQUITO_IMG_HEIGHT = mosquitoImg.offsetHeight;
+
+        let gameStarted = false,
+            gameCounter = GAME_TIME,
+            gameIntervalHolder,
+            imagePositionInterval,
+            startTimerInterval,
+            currentScore = 0;
+
+        const hideMosquitoImg = () => (mosquitoImg.style.display = "none");
+        const showMosquitoImg = () => (mosquitoImg.style.display = "inline");
+
+        const handleMosquitoFlying = () => {
+            clearInterval(imagePositionInterval);
+
+            imagePositionInterval = setInterval(() => {
+                handleMosquitoImgPosition();
+            }, MOSQUITO_REPOSITION_TIME);
+        };
+
+        const handleMosquitoImgPosition = () => {
+            hideMosquitoImg();
+
+            if (!gameStarted) {
+                clearInterval(imagePositionInterval);
+                return;
+            }
+
+            let x =
+                Math.floor(
+                    Math.random() * (gameContainer.offsetWidth - MOSQUITO_IMG_WIDTH)
+                ) + 1;
+            let y =
+                Math.floor(
+                    Math.random() * (gameContainer.offsetHeight - MOSQUITO_IMG_HEIGHT)
+                ) + 1;
+
+            x = x < 20 ? 20 : x;
+            y = y < 20 ? 20 : y;
+
+            mosquitoImg.style.left = x + "px";
+            mosquitoImg.style.top = y + "px";
+            showMosquitoImg();
+        };
+
+        const startGameCounter = () => {
+            gameCounter = GAME_TIME;
+            clearInterval(gameIntervalHolder);
+
+            gameIntervalHolder = setInterval(() => {
+                if (!gameStarted) return;
+
+                gameCounter--;
+                gameTimeHolder.innerText = gameCounter;
+
+                if (gameCounter === 0) {
+                    const highScore = localStorage.getItem("highScore") ?? 0;
+
+                    hideMosquitoImg();
+                    startBtn.style.display = "block";
+                    gameStarted = false;
+                    gameContainer.classList.remove("started");
+
+                    // set highscore
+                    if (currentScore > highScore) {
+                        localStorage.setItem("highScore", currentScore);
+                        highScoreHolder.innerText = currentScore;
+                    }
+
+                    clearInterval(gameIntervalHolder);
+                    clearInterval(imagePositionInterval);
+                    return;
+                }
+            }, 1000);
+        };
+
+        const handleStartTimer = () => {
+            return new Promise((resolve) => {
+                clearInterval(startTimerInterval);
+                let startTimer = 3;
+                startTimerCountHolder.innerText = startTimer;
+
+                startTimerInterval = setInterval(() => {
+                    startTimerCountHolder.innerText = '';
+
+                    startTimer--;
+                    startTimerCountHolder.innerText = startTimer;
+
+                    if (startTimer === 0) {
+                        clearInterval(startTimerInterval);
+                        resolve(true);
+                        return;
+                    }
+                }, 1000);
+            });
+        };
+
+        function handleMosquitoHit() {
+            if (!gameStarted) return;
+
+            currentScore++;
+            currentScoreHolder.innerText = currentScore;
+
+            handleMosquitoImgPosition();
+            handleMosquitoFlying();
+        }
+
+        startBtn.onclick = async () => {
+            currentScore = 0;
+            startBtn.style.display = "none";
+            currentScoreHolder.innerText = currentScore;
+            
+            startTimerCountainer.classList.add("started");
+            await handleStartTimer();
+            startTimerCountainer.classList.remove("started");
+
+            gameStarted = true;
+            gameTimeHolder.innerText = GAME_TIME;
+            gameContainer.classList.add("started");
+            hideMosquitoImg();
+            startGameCounter();
+            handleMosquitoFlying();
+        };
+
+        mosquitoImg.addEventListener("click", handleMosquitoHit);
+        mosquitoImg.addEventListener("touch", handleMosquitoHit);
+
+        gameTimeHolder.innerText = GAME_TIME;
+        highScoreHolder.innerText = localStorage.getItem("highScore") ?? 0;
+
+        hideMosquitoImg();
+    </script>
+</body>
+
+</html>
